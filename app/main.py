@@ -1,12 +1,16 @@
+from pathlib import Path
 from fastapi import FastAPI
 from pydantic import BaseModel
 from model.train import preprocess_data
 import joblib
 from fastapi.middleware.cors import CORSMiddleware
 
-# Load the trained model and vectorizer
-model = joblib.load('model/artifacts/model.pkl')
-vectorizer = joblib.load('model/artifacts/vectorizer.pkl')
+# Resolve absolute paths for model artifacts
+BASE_DIR = Path(__file__).resolve().parent
+ARTIFACT_DIR = BASE_DIR.parent / "model" / "artifacts"
+
+model = joblib.load(ARTIFACT_DIR / "model.pkl")
+vectorizer = joblib.load(ARTIFACT_DIR / "vectorizer.pkl")
 
 class ReviewRequest(BaseModel):
     review: str
