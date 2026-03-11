@@ -46,7 +46,7 @@ def predict_sentiment(input: ReviewRequest) -> SentimentResponse:
 
 # This is another way of sentiment analysis. BoW, vectorizing, and then feeding into a model is the traditional way of doing things and is more lightweight. Using a transformer model is more modern and typically has better performance, but is more complex and resource intensive. You can swap between the two approaches by commenting/uncommenting the relevant code sections.
 @app.post("/predict/bow")
-def predict_sentiment(input: ReviewRequest) -> SentimentResponse:
+def predict_sentiment_bow(input: ReviewRequest) -> SentimentResponse:
     # Preprocess the input review
     cleaned_review = preprocess_data(input.review)
     
