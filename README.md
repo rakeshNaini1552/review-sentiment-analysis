@@ -1,3 +1,9 @@
+---
+title: Review Sentiment API
+sdk: docker
+app_port: 7860
+---
+
 # Sentiment Analysis — NLP to Production
 
 A full-stack sentiment analysis application that classifies restaurant reviews as positive or negative. Supports two interchangeable model backends — a BERT transformer and a Naive Bayes classifier — selectable from the UI.
