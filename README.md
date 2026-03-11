@@ -1,6 +1,6 @@
 # Sentiment Analysis — NLP to Production
 
-A full-stack sentiment analysis application that classifies restaurant reviews as positive or negative. Built with a Naive Bayes classifier, served via a FastAPI REST API, and paired with a React frontend.
+A full-stack sentiment analysis application that classifies restaurant reviews as positive or negative. Supports two interchangeable model backends — a BERT transformer and a Naive Bayes classifier — selectable from the UI.
 
 ---
 
@@ -8,14 +8,25 @@ A full-stack sentiment analysis application that classifies restaurant reviews a
 
 | Layer | Technology |
 |---|---|
-| ML Model | Naive Bayes (scikit-learn) |
-| Text Processing | Stemming + sklearn stopword removal |
-| Vectorization | Bag of Words (CountVectorizer) |
 | Backend API | FastAPI + Pydantic |
+| BERT Model | DistilBERT (Hugging Face Transformers) |
+| BoW Model | Naive Bayes + CountVectorizer (scikit-learn) |
 | Frontend | React + Vite |
-| Model Persistence | joblib |
 | Backend Hosting | Render |
 | Frontend Hosting | Vercel |
+
+---
+
+## Two Model Approaches
+
+| | BERT | Naive Bayes |
+|---|---|---|
+| Accuracy | ~91% | ~74% |
+| Understands negation | ✅ "not bad" → positive | ❌ strips "not" as stopword |
+| Preprocessing needed | ❌ pipeline handles everything | ✅ stem + stopword removal |
+| Model size | ~250MB | ~1MB |
+| Inference speed | Slower | Very fast |
+| Training required | ❌ pre-trained | ✅ run `train.py` first |
 
 ---
 
@@ -24,18 +35,18 @@ A full-stack sentiment analysis application that classifies restaurant reviews a
 ```
 review-sentiment-analysis/
 ├── app/
-│   └── main.py               # FastAPI application & prediction endpoints
+│   └── main.py               # FastAPI — both /predict/bert and /predict/bow endpoints
 ├── model/
-│   ├── train.py              # Training script — run once to generate artifacts
+│   ├── train.py              # BoW training script
 │   └── artifacts/
 │       ├── model.pkl         # Serialized Naive Bayes classifier
 │       └── vectorizer.pkl    # Serialized CountVectorizer
 ├── data/
 │   └── Restaurant_Reviews.tsv
-├── sentiment-UI/             # React frontend
+├── sentiment-UI/
 │   └── src/
-│       └── App.jsx
-├── render.yaml               # Render deployment config
+│       └── App.jsx           # React frontend with model toggle
+├── render.yaml
 ├── requirements.txt
 └── .gitignore
 ```
@@ -63,13 +74,13 @@ source .venv/bin/activate      # macOS/Linux
 .venv\Scripts\activate         # Windows
 ```
 
-### 3. Install Python dependencies
+### 3. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Train the model
+### 4. Train the BoW model (required for /predict/bow)
 
 ```bash
 python model/train.py
@@ -88,6 +99,8 @@ Confusion matrix:
 ```bash
 python -m uvicorn app.main:app --reload
 ```
+
+> First startup will be slow (~30s) as BERT downloads ~250MB. Subsequent startups load from cache.
 
 API runs at `http://localhost:8000`  
 Interactive docs at `http://localhost:8000/docs`
@@ -115,83 +128,90 @@ Frontend runs at `http://localhost:5173`
    - **Language:** Python
    - **Build Command:** `pip install -r requirements.txt`
    - **Start Command:** `python -m uvicorn app.main:app --host 0.0.0.0 --port 8000`
-   - **Instance Type:** Free
+   - **Instance Type:** Starter ($7/mo) recommended — BERT requires ~500MB RAM
 5. Click **Deploy Web Service**
-6. Copy your live API URL (e.g. `https://review-sentiment-api.onrender.com`)
+6. Copy your live API URL
 
 ### Frontend — Vercel
 
-1. Update `API_BASE` in `sentiment-UI/src/App.jsx` with your Render URL:
+1. Update `API_BASE` in `sentiment-UI/src/App.jsx`:
    ```javascript
    const API_BASE = "https://your-app-name.onrender.com";
    ```
 2. Commit and push
 3. Go to [vercel.com](https://vercel.com) → **New Project**
-4. Import your GitHub repo
-5. Set **Root Directory** to `sentiment-UI`
-6. Click **Deploy**
+4. Import repo, set **Root Directory** to `sentiment-UI`
+5. Click **Deploy**
 
 ---
 
 ## API Reference
 
-### `POST /predict`
+### `POST /predict/bert`
 
-Predict the sentiment of a single review.
+Uses DistilBERT transformer for context-aware sentiment prediction.
 
 **Request**
 ```json
-{
-  "review": "The food was absolutely incredible!"
-}
+{ "review": "The food was not bad at all!" }
 ```
 
 **Response**
 ```json
 {
-  "review": "The food was absolutely incredible!",
+  "review": "The food was not bad at all!",
   "sentiment": "positive",
-  "label": 1,
-  "confidence": 0.9821
+  "confidence": 0.9823
 }
 ```
 
 ---
 
-### `GET /health`
+### `POST /predict/bow`
 
-Check if the API and model are running.
+Uses Naive Bayes + Bag of Words — lightweight and fast.
+
+**Request**
+```json
+{ "review": "The food was not bad at all!" }
+```
 
 **Response**
 ```json
 {
-  "status": "ok",
-  "model_loaded": true
+  "review": "The food was not bad at all!",
+  "sentiment": "negative",
+  "confidence": 0.7431
 }
 ```
+
+> Note the difference — BoW misclassifies "not bad" as negative because "not" is removed as a stopword. BERT correctly identifies it as positive.
 
 ---
 
 ## How It Works
 
-1. **Training** — `train.py` reads 1,000 labeled restaurant reviews, cleans the text (removes noise, lowercases, stems words, strips stopwords), fits a CountVectorizer to build a vocabulary, trains a Multinomial Naive Bayes classifier, and saves both the model and vectorizer to disk via `joblib`.
+1. **Training (BoW)** — `train.py` reads 1,000 labeled restaurant reviews, cleans the text, fits a CountVectorizer vocabulary, trains a Multinomial Naive Bayes classifier, and saves both artifacts via `joblib`.
 
-2. **Serving** — `main.py` loads the saved artifacts once at startup. On each `/predict` request, the incoming review is cleaned using the same preprocessing pipeline, transformed using the saved vectorizer (not re-fitted), and passed to the model for prediction.
+2. **BERT** — `distilbert-base-uncased-finetuned-sst-2-english` is loaded from Hugging Face at startup. No preprocessing needed — the pipeline handles tokenization and inference internally.
 
-3. **Frontend** — The React app sends a `POST` request to the API with the review text and displays the sentiment and confidence score returned in the response.
+3. **Serving** — both models load once at startup. `/predict/bert` and `/predict/bow` serve predictions from their respective models independently.
+
+4. **Frontend** — the React app lets users toggle between BERT and Naive Bayes, sends a `POST` request to the selected endpoint, and displays the sentiment, confidence score, and which model was used.
 
 ---
 
 ## Known Limitations
 
-- The Bag of Words model does not understand word order or negation. A review like *"not bad"* may be misclassified because "not" is treated as a stopword, leaving only "bad".
-- Trained on restaurant reviews only — performance may degrade on other domains.
-- 74% accuracy on the test set — suitable for learning purposes, not production-critical use cases.
+- BoW does not understand negation or word order — "not bad" → negative
+- Both models trained/fine-tuned on English only
+- Free Render tier may run out of memory with BERT loaded — Starter plan recommended
 
 ---
 
 ## Future Improvements
 
-- Replace Naive Bayes with a transformer-based model (e.g. BERT) for better contextual understanding
-- Add a `/predict/batch` endpoint for bulk predictions
+- Fine-tune BERT on restaurant-specific data (e.g. Yelp dataset) for higher domain accuracy
+- Add `/predict/batch` endpoint for bulk predictions
 - Containerize with Docker for easier deployment
+- Add side-by-side comparison mode in the UI
