@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 
-const API_BASE = "https://review-sentiment-analysis-tkp4.onrender.com";
+const API_BASE = "https://rakeshn591-review-sentiment-analysis-bert.hf.space";
 
 // const API_BASE = "http://localhost:8000";
 
