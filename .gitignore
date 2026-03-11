@@ -2,12 +2,8 @@
 __pycache__/
 *.pyc
 .venv/
-*.pkl
 *.code-workspace
 
-
-# Data
-data/
 
 # Node
 sentiment-UI/node_modules/
