@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 import re
 import nltk
@@ -9,6 +8,7 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.metrics import confusion_matrix, accuracy_score
 import joblib
 
+nltk.download('stopwords', quiet=True)
 ps = nltk.PorterStemmer()
 stop_words = set(stopwords.words('english'))
 
