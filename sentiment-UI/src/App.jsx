@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 
-const API_BASE = "http://localhost:8000";
+// this url is when run the backend locally. Change if your API is hosted elsewhere (e.g. Render, Heroku, etc.)
+// const API_BASE = "http://localhost:8000";
+
+const API_BASE = "https://review-sentiment-analysis-tkp4.onrender.com";
 
 // ── Mock predict for demo (swap with real fetch when API is running) ──────────
 async function callPredict(review) {
