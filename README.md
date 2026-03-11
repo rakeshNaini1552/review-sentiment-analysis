@@ -9,18 +9,20 @@ A full-stack sentiment analysis application that classifies restaurant reviews a
 | Layer | Technology |
 |---|---|
 | ML Model | Naive Bayes (scikit-learn) |
-| Text Processing | NLTK — stemming, stopword removal |
+| Text Processing | Stemming + sklearn stopword removal |
 | Vectorization | Bag of Words (CountVectorizer) |
 | Backend API | FastAPI + Pydantic |
 | Frontend | React + Vite |
 | Model Persistence | joblib |
+| Backend Hosting | Render |
+| Frontend Hosting | Vercel |
 
 ---
 
 ## Project Structure
 
 ```
-fastapi-course/
+review-sentiment-analysis/
 ├── app/
 │   └── main.py               # FastAPI application & prediction endpoints
 ├── model/
@@ -33,13 +35,14 @@ fastapi-course/
 ├── sentiment-UI/             # React frontend
 │   └── src/
 │       └── App.jsx
+├── render.yaml               # Render deployment config
 ├── requirements.txt
 └── .gitignore
 ```
 
 ---
 
-## Setup & Installation
+## Local Setup
 
 ### Prerequisites
 - Python 3.9+
@@ -48,8 +51,8 @@ fastapi-course/
 ### 1. Clone the repository
 
 ```bash
-git clone <your-repo-url>
-cd fastapi-course
+git clone https://github.com/rakeshNaini1552/review-sentiment-analysis.git
+cd review-sentiment-analysis
 ```
 
 ### 2. Create a virtual environment
@@ -78,13 +81,12 @@ Accuracy : 0.7400
 Confusion matrix:
 [[71 25]
  [27 77]]
-Artifacts saved to model/artifacts/
 ```
 
 ### 5. Start the API
 
 ```bash
-uvicorn app.main:app --reload
+python -m uvicorn app.main:app --reload
 ```
 
 API runs at `http://localhost:8000`  
@@ -99,6 +101,35 @@ npm run dev
 ```
 
 Frontend runs at `http://localhost:5173`
+
+---
+
+## Deployment
+
+### Backend — Render
+
+1. Push code to GitHub
+2. Go to [render.com](https://render.com) → **New** → **Web Service**
+3. Connect your GitHub repo
+4. Configure:
+   - **Language:** Python
+   - **Build Command:** `pip install -r requirements.txt`
+   - **Start Command:** `python -m uvicorn app.main:app --host 0.0.0.0 --port 8000`
+   - **Instance Type:** Free
+5. Click **Deploy Web Service**
+6. Copy your live API URL (e.g. `https://review-sentiment-api.onrender.com`)
+
+### Frontend — Vercel
+
+1. Update `API_BASE` in `sentiment-UI/src/App.jsx` with your Render URL:
+   ```javascript
+   const API_BASE = "https://your-app-name.onrender.com";
+   ```
+2. Commit and push
+3. Go to [vercel.com](https://vercel.com) → **New Project**
+4. Import your GitHub repo
+5. Set **Root Directory** to `sentiment-UI`
+6. Click **Deploy**
 
 ---
 
@@ -153,7 +184,7 @@ Check if the API and model are running.
 
 ## Known Limitations
 
-- The Bag of Words model does not understand word order or negation. A review like *"not bad"* may be misclassified because "not" is removed as a stopword, leaving only "bad".
+- The Bag of Words model does not understand word order or negation. A review like *"not bad"* may be misclassified because "not" is treated as a stopword, leaving only "bad".
 - Trained on restaurant reviews only — performance may degrade on other domains.
 - 74% accuracy on the test set — suitable for learning purposes, not production-critical use cases.
 
@@ -164,4 +195,3 @@ Check if the API and model are running.
 - Replace Naive Bayes with a transformer-based model (e.g. BERT) for better contextual understanding
 - Add a `/predict/batch` endpoint for bulk predictions
 - Containerize with Docker for easier deployment
-- Deploy API to Railway or Render, frontend to Vercel
