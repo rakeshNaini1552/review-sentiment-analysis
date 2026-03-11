@@ -47,7 +47,7 @@ export default function App() {
       setResult(data);
       setHistory(prev => [data, ...prev].slice(0, 8));
     } catch (e) {
-      setError("Could not reach the API. Make sure the FastAPI server is running.");
+      setError(`Could not reach the API. Make sure the FastAPI server is running. ${e.message}`);
     } finally {
       setLoading(false);
     }
