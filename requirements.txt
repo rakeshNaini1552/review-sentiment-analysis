@@ -5,3 +5,5 @@ fastapi
 uvicorn
 joblib
 nltk
+torch
+transformers

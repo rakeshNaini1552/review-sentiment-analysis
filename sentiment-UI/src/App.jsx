@@ -1,14 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 
-// this url is when run the backend locally. Change if your API is hosted elsewhere (e.g. Render, Heroku, etc.)
-// const API_BASE = "http://localhost:8000";
-
 const API_BASE = "https://review-sentiment-analysis-tkp4.onrender.com";
 
-// ── Mock predict for demo (swap with real fetch when API is running) ──────────
-async function callPredict(review) {
-  // PRODUCTION: uncomment below and remove mock
-  const res = await fetch(`${API_BASE}/predict`, {
+// const API_BASE = "http://localhost:8000";
+
+async function callPredict(review, selectedModel) {
+  const res = await fetch(`${API_BASE}/predict/${selectedModel}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ review }),
@@ -18,6 +15,7 @@ async function callPredict(review) {
 }
 
 const EXAMPLES = [
+  "The food was not bad!",
   "The food was absolutely incredible, best pasta I've ever had!",
   "Service was slow and the steak was completely overcooked.",
   "Cozy atmosphere, friendly staff, and the dessert was divine.",
@@ -31,6 +29,7 @@ export default function App() {
   const [error, setError] = useState(null);
   const [history, setHistory] = useState([]);
   const [charCount, setCharCount] = useState(0);
+  const [selectedModel, setSelectedModel] = useState("bert");
   const textRef = useRef(null);
 
   useEffect(() => {
@@ -43,9 +42,9 @@ export default function App() {
     setError(null);
     setResult(null);
     try {
-      const data = await callPredict(review);
-      setResult(data);
-      setHistory(prev => [data, ...prev].slice(0, 8));
+      const data = await callPredict(review, selectedModel);
+      setResult({ ...data, model: selectedModel });
+      setHistory(prev => [{ ...data, model: selectedModel }, ...prev].slice(0, 8));
     } catch (e) {
       setError(`Could not reach the API. Make sure the FastAPI server is running. ${e.message}`);
     } finally {
@@ -73,7 +72,6 @@ export default function App() {
       display: "flex",
       flexDirection: "column",
     }}>
-      {/* Ambient background */}
       <div style={{
         position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
         background: `radial-gradient(ellipse 60% 50% at 20% 10%, rgba(255,180,50,0.07) 0%, transparent 60%),
@@ -92,7 +90,7 @@ export default function App() {
               flexShrink: 0,
             }} />
             <span style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(232,228,217,0.45)", fontFamily: "monospace" }}>
-              NLP · Sentiment Analysis · v1.0
+              NLP · Sentiment Analysis · v2.0
             </span>
           </div>
           <h1 style={{ fontSize: "clamp(28px, 5vw, 44px)", fontWeight: 400, margin: 0, lineHeight: 1.15, letterSpacing: "-0.02em" }}>
@@ -100,9 +98,39 @@ export default function App() {
             <em style={{ color: "#f5c842", fontStyle: "italic" }}>really</em> feel?
           </h1>
           <p style={{ marginTop: 14, color: "rgba(232,228,217,0.5)", fontSize: 15, lineHeight: 1.7, maxWidth: 460 }}>
-            Naive Bayes classifier trained on 1,000 restaurant reviews.
-            Paste any review below to get an instant sentiment prediction.
+            Compare two sentiment models — BERT transformer vs Naive Bayes classifier.
+            Paste any review below to get an instant prediction.
           </p>
+        </div>
+
+        {/* Model toggle */}
+        <div style={{ marginBottom: 32 }}>
+          <p style={{ fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(232,228,217,0.3)", marginBottom: 12, fontFamily: "monospace" }}>
+            Select model
+          </p>
+          <div style={{ display: "flex", gap: 8 }}>
+            {[
+              { key: "bert", label: "BERT", sub: "~91% accuracy · context-aware" },
+              { key: "bow", label: "Naive Bayes", sub: "~74% accuracy · lightweight" },
+            ].map(({ key, label, sub }) => (
+              <button key={key} onClick={() => setSelectedModel(key)}
+                style={{
+                  background: selectedModel === key ? "rgba(245,200,66,0.12)" : "transparent",
+                  border: `1px solid ${selectedModel === key ? "rgba(245,200,66,0.5)" : "rgba(232,228,217,0.15)"}`,
+                  color: selectedModel === key ? "#f5c842" : "rgba(232,228,217,0.5)",
+                  padding: "10px 20px",
+                  borderRadius: 3,
+                  cursor: "pointer",
+                  fontFamily: "Georgia, serif",
+                  textAlign: "left",
+                  transition: "all 0.2s",
+                }}
+              >
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{label}</div>
+                <div style={{ fontSize: 11, fontFamily: "monospace", opacity: 0.7, marginTop: 2 }}>{sub}</div>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Example chips */}
@@ -201,7 +229,7 @@ export default function App() {
               Analysing…
             </>
           ) : (
-            <>Analyse sentiment  <span style={{ opacity: 0.5, fontSize: 12, fontFamily: "monospace" }}>⌘↵</span></>
+            <>Analyse with {selectedModel === "bert" ? "BERT" : "Naive Bayes"}  <span style={{ opacity: 0.5, fontSize: 12, fontFamily: "monospace" }}>⌘↵</span></>
           )}
         </button>
 
@@ -226,7 +254,6 @@ export default function App() {
             overflow: "hidden",
             animation: "fadeUp 0.4s ease both",
           }}>
-            {/* Top bar */}
             <div style={{
               background: isPositive ? "rgba(80,200,120,0.08)" : "rgba(220,80,80,0.08)",
               padding: "20px 28px",
@@ -246,12 +273,11 @@ export default function App() {
                     {isPositive ? "Positive review" : "Negative review"}
                   </div>
                   <div style={{ fontSize: 13, color: "rgba(232,228,217,0.45)", marginTop: 2, fontFamily: "monospace" }}>
-                    label: {result.label} · {result.processing_ms}ms
+                    model: {result.model === "bert" ? "BERT" : "Naive Bayes"}
                   </div>
                 </div>
               </div>
 
-              {/* Confidence bar */}
               <div style={{ textAlign: "right", minWidth: 120 }}>
                 <div style={{ fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(232,228,217,0.35)", fontFamily: "monospace", marginBottom: 6 }}>
                   Confidence
@@ -259,9 +285,7 @@ export default function App() {
                 <div style={{ fontSize: 28, fontWeight: 300, fontFamily: "monospace", color: isPositive ? "#7ee8a2" : "#f08080" }}>
                   {(result.confidence * 100).toFixed(1)}<span style={{ fontSize: 14 }}>%</span>
                 </div>
-                <div style={{
-                  marginTop: 6, height: 4, background: "rgba(232,228,217,0.1)", borderRadius: 2, width: 120,
-                }}>
+                <div style={{ marginTop: 6, height: 4, background: "rgba(232,228,217,0.1)", borderRadius: 2, width: 120 }}>
                   <div style={{
                     height: "100%", borderRadius: 2, width: `${result.confidence * 100}%`,
                     background: isPositive ? "#7ee8a2" : "#f08080",
@@ -271,7 +295,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Review text */}
             <div style={{ padding: "18px 28px", borderTop: "1px solid rgba(232,228,217,0.06)" }}>
               <p style={{ fontSize: 12, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(232,228,217,0.3)", fontFamily: "monospace", marginBottom: 8 }}>
                 Input review
@@ -303,6 +326,9 @@ export default function App() {
                   <span style={{ fontSize: 14, flex: 1, color: "rgba(232,228,217,0.65)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {h.review}
                   </span>
+                  <span style={{ fontSize: 11, fontFamily: "monospace", color: "rgba(232,228,217,0.25)", flexShrink: 0 }}>
+                    {h.model === "bert" ? "BERT" : "NB"}
+                  </span>
                   <span style={{ fontSize: 12, fontFamily: "monospace", color: "rgba(232,228,217,0.3)", flexShrink: 0 }}>
                     {(h.confidence * 100).toFixed(1)}%
                   </span>
@@ -315,10 +341,10 @@ export default function App() {
         {/* Footer */}
         <div style={{ marginTop: 72, paddingTop: 24, borderTop: "1px solid rgba(232,228,217,0.07)", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
           <span style={{ fontSize: 12, fontFamily: "monospace", color: "rgba(232,228,217,0.2)" }}>
-            MultinomialNB · BoW · 74% accuracy
+            BERT · DistilBERT SST-2 · 91% accuracy
           </span>
           <span style={{ fontSize: 12, fontFamily: "monospace", color: "rgba(232,228,217,0.2)" }}>
-            POST /predict · POST /predict/batch
+            POST /predict/bert · POST /predict/bow
           </span>
         </div>
       </div>
